@@ -1,102 +1,114 @@
--- Place this LocalScript inside the ScreenGui that contains MoneyLabel.
--- MoneyLabel should be a TextLabel.
+-- Robust Money GUI controller.
+-- This version works whether the LocalScript is:
+--   1) directly inside the Money TextLabel, OR
+--   2) anywhere inside the same ScreenGui.
 --
--- This version uses ONE animation worker. If Money changes again while the
--- counter is still animating, it simply updates the target instead of
--- starting another competing animation.
+-- It never changes the label's Size or adds UIScale, so it will not clip or
+-- distort the existing UI. It also uses only one counter worker, preventing
+-- overlapping animations from desynchronizing the displayed value.
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local moneyLabel = script.Parent:WaitForChild("MoneyLabel")
+local playerGui = player:WaitForChild("PlayerGui")
+
+local function findMoneyLabel()
+    -- Best case: the LocalScript is directly inside the TextLabel.
+    if script.Parent:IsA("TextLabel") then
+        return script.Parent
+    end
+
+    -- Search the script's nearest ScreenGui first.
+    local screenGui = script:FindFirstAncestorOfClass("ScreenGui")
+
+    if screenGui then
+        local named = screenGui:FindFirstChild("MoneyLabel", true)
+        if named and named:IsA("TextLabel") then
+            return named
+        end
+
+        -- Fallback: find a TextLabel whose name or text looks like the money UI.
+        for _, object in screenGui:GetDescendants() do
+            if object:IsA("TextLabel") then
+                local nameLooksRight = string.find(string.lower(object.Name), "money", 1, true) ~= nil
+                local textLooksRight = string.find(string.upper(object.Text), "MONEY", 1, true) ~= nil
+
+                if nameLooksRight or textLooksRight then
+                    return object
+                end
+            end
+        end
+    end
+
+    -- Last fallback: search all PlayerGui descendants.
+    local named = playerGui:FindFirstChild("MoneyLabel", true)
+    if named and named:IsA("TextLabel") then
+        return named
+    end
+
+    for _, object in playerGui:GetDescendants() do
+        if object:IsA("TextLabel") then
+            local nameLooksRight = string.find(string.lower(object.Name), "money", 1, true) ~= nil
+            local textLooksRight = string.find(string.upper(object.Text), "MONEY", 1, true) ~= nil
+
+            if nameLooksRight or textLooksRight then
+                return object
+            end
+        end
+    end
+
+    return nil
+end
+
+local moneyLabel = findMoneyLabel()
+
+if not moneyLabel then
+    warn("Money GUI: could not find a TextLabel for the money display")
+    return
+end
 
 local leaderstats = player:WaitForChild("leaderstats")
 local money = leaderstats:WaitForChild("Money")
 
 local PREFIX = "MONEY: "
-
--- Use UIScale for the small pop effect so the TextLabel's actual Size does
--- not get corrupted by overlapping tweens.
-local uiScale = moneyLabel:FindFirstChildOfClass("UIScale")
-if not uiScale then
-    uiScale = Instance.new("UIScale")
-    uiScale.Scale = 1
-    uiScale.Parent = moneyLabel
-end
+local STEP_DELAY = 0.012
 
 local displayedValue = money.Value
 local targetValue = money.Value
-local animationRunning = false
+local workerRunning = false
 
-local function updateText(value)
-    moneyLabel.Text = PREFIX .. tostring(value)
-end
-
-local function playPop()
-    local grow = TweenService:Create(
-        uiScale,
-        TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Scale = 1.08}
-    )
-
-    local shrink = TweenService:Create(
-        uiScale,
-        TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Scale = 1}
-    )
-
-    grow:Play()
-    grow.Completed:Wait()
-    shrink:Play()
-    shrink.Completed:Wait()
+local function updateText()
+    moneyLabel.Text = PREFIX .. tostring(displayedValue)
 end
 
 local function runCounter()
-    if animationRunning then
+    if workerRunning then
         return
     end
 
-    animationRunning = true
+    workerRunning = true
 
-    while true do
-        -- Always chase the newest target value.
-        while displayedValue ~= targetValue do
-            local difference = targetValue - displayedValue
-            local distance = math.abs(difference)
-
-            if difference > 0 then
-                displayedValue += 1
-            else
-                displayedValue -= 1
-            end
-
-            updateText(displayedValue)
-
-            -- Large gaps count very quickly; small gaps remain readable.
-            local delayPerNumber = math.clamp(0.08 / math.max(distance, 1), 0.002, 0.02)
-            task.wait(delayPerNumber)
+    while displayedValue ~= targetValue do
+        if displayedValue < targetValue then
+            displayedValue += 1
+        else
+            displayedValue -= 1
         end
 
-        playPop()
-
-        -- Money may have changed while the pop animation was playing.
-        if displayedValue == targetValue then
-            break
-        end
+        updateText()
+        task.wait(STEP_DELAY)
     end
 
-    animationRunning = false
+    workerRunning = false
 
-    -- Protect against a value change in the tiny gap before the flag reset.
+    -- If Money changed in the tiny gap after the loop ended, continue again.
     if displayedValue ~= targetValue then
         task.defer(runCounter)
     end
 end
 
--- On join, immediately show the already-loaded DataStore value.
--- We do NOT count from 0 to the saved amount.
-updateText(displayedValue)
+-- Show the already-loaded DataStore value immediately when the player joins.
+updateText()
 
 money:GetPropertyChangedSignal("Value"):Connect(function()
     targetValue = money.Value
