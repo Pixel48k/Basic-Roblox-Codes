@@ -1,11 +1,10 @@
--- Robust Money GUI controller.
--- This version works whether the LocalScript is:
---   1) directly inside the Money TextLabel, OR
---   2) anywhere inside the same ScreenGui.
+-- Robust + adaptive Money GUI controller.
+-- Works whether this LocalScript is directly inside the Money TextLabel
+-- or anywhere inside the same ScreenGui.
 --
--- It never changes the label's Size or adds UIScale, so it will not clip or
--- distort the existing UI. It also uses only one counter worker, preventing
--- overlapping animations from desynchronizing the displayed value.
+-- Small money changes count almost one-by-one.
+-- Large money changes automatically use bigger steps so the GUI catches up
+-- quickly instead of taking many seconds.
 
 local Players = game:GetService("Players")
 
@@ -13,21 +12,19 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local function findMoneyLabel()
-    -- Best case: the LocalScript is directly inside the TextLabel.
     if script.Parent:IsA("TextLabel") then
         return script.Parent
     end
 
-    -- Search the script's nearest ScreenGui first.
     local screenGui = script:FindFirstAncestorOfClass("ScreenGui")
 
     if screenGui then
         local named = screenGui:FindFirstChild("MoneyLabel", true)
+
         if named and named:IsA("TextLabel") then
             return named
         end
 
-        -- Fallback: find a TextLabel whose name or text looks like the money UI.
         for _, object in screenGui:GetDescendants() do
             if object:IsA("TextLabel") then
                 local nameLooksRight = string.find(string.lower(object.Name), "money", 1, true) ~= nil
@@ -40,8 +37,8 @@ local function findMoneyLabel()
         end
     end
 
-    -- Last fallback: search all PlayerGui descendants.
     local named = playerGui:FindFirstChild("MoneyLabel", true)
+
     if named and named:IsA("TextLabel") then
         return named
     end
@@ -71,6 +68,13 @@ local leaderstats = player:WaitForChild("leaderstats")
 local money = leaderstats:WaitForChild("Money")
 
 local PREFIX = "MONEY: "
+
+-- Maximum number of visible counter updates for one large jump.
+-- Smaller value = faster large rewards.
+-- Larger value = smoother large rewards.
+local MAX_VISIBLE_STEPS = 45
+
+-- Delay between visible updates.
 local STEP_DELAY = 0.012
 
 local displayedValue = money.Value
@@ -81,6 +85,17 @@ local function updateText()
     moneyLabel.Text = PREFIX .. tostring(displayedValue)
 end
 
+local function getAdaptiveStep(distance)
+    -- Small rewards still count one-by-one.
+    if distance <= 25 then
+        return 1
+    end
+
+    -- For larger jumps, choose a step size that finishes in roughly
+    -- MAX_VISIBLE_STEPS updates or fewer.
+    return math.max(1, math.ceil(distance / MAX_VISIBLE_STEPS))
+end
+
 local function runCounter()
     if workerRunning then
         return
@@ -89,10 +104,14 @@ local function runCounter()
     workerRunning = true
 
     while displayedValue ~= targetValue do
-        if displayedValue < targetValue then
-            displayedValue += 1
+        local difference = targetValue - displayedValue
+        local distance = math.abs(difference)
+        local step = getAdaptiveStep(distance)
+
+        if difference > 0 then
+            displayedValue = math.min(displayedValue + step, targetValue)
         else
-            displayedValue -= 1
+            displayedValue = math.max(displayedValue - step, targetValue)
         end
 
         updateText()
@@ -101,13 +120,13 @@ local function runCounter()
 
     workerRunning = false
 
-    -- If Money changed in the tiny gap after the loop ended, continue again.
+    -- Handles a Money change occurring in the tiny gap after the loop ends.
     if displayedValue ~= targetValue then
         task.defer(runCounter)
     end
 end
 
--- Show the already-loaded DataStore value immediately when the player joins.
+-- Immediately show the already-loaded DataStore value on join.
 updateText()
 
 money:GetPropertyChangedSignal("Value"):Connect(function()
