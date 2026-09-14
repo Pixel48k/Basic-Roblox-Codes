@@ -1,5 +1,9 @@
 -- Place this LocalScript inside the ScreenGui that contains MoneyLabel.
 -- MoneyLabel should be a TextLabel.
+--
+-- This version uses ONE animation worker. If Money changes again while the
+-- counter is still animating, it simply updates the target instead of
+-- starting another competing animation.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -10,41 +14,91 @@ local moneyLabel = script.Parent:WaitForChild("MoneyLabel")
 local leaderstats = player:WaitForChild("leaderstats")
 local money = leaderstats:WaitForChild("Money")
 
-local displayedValue = money.Value
-moneyLabel.Text = tostring(displayedValue)
+local PREFIX = "MONEY: "
 
-local function animateTo(target)
-    local start = displayedValue
-    local difference = target - start
-    local steps = math.max(math.abs(difference), 1)
-    local duration = math.clamp(steps * 0.025, 0.15, 0.8)
-
-    for i = 1, steps do
-        local alpha = i / steps
-        displayedValue = math.round(start + difference * alpha)
-        moneyLabel.Text = tostring(displayedValue)
-        task.wait(duration / steps)
-    end
-
-    displayedValue = target
-    moneyLabel.Text = tostring(target)
-
-    local originalSize = moneyLabel.Size
-    local grow = TweenService:Create(
-        moneyLabel,
-        TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Size = originalSize + UDim2.fromOffset(8, 8)}
-    )
-    grow:Play()
-    grow.Completed:Wait()
-
-    TweenService:Create(
-        moneyLabel,
-        TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Size = originalSize}
-    ):Play()
+-- Use UIScale for the small pop effect so the TextLabel's actual Size does
+-- not get corrupted by overlapping tweens.
+local uiScale = moneyLabel:FindFirstChildOfClass("UIScale")
+if not uiScale then
+    uiScale = Instance.new("UIScale")
+    uiScale.Scale = 1
+    uiScale.Parent = moneyLabel
 end
 
+local displayedValue = money.Value
+local targetValue = money.Value
+local animationRunning = false
+
+local function updateText(value)
+    moneyLabel.Text = PREFIX .. tostring(value)
+end
+
+local function playPop()
+    local grow = TweenService:Create(
+        uiScale,
+        TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Scale = 1.08}
+    )
+
+    local shrink = TweenService:Create(
+        uiScale,
+        TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Scale = 1}
+    )
+
+    grow:Play()
+    grow.Completed:Wait()
+    shrink:Play()
+    shrink.Completed:Wait()
+end
+
+local function runCounter()
+    if animationRunning then
+        return
+    end
+
+    animationRunning = true
+
+    while true do
+        -- Always chase the newest target value.
+        while displayedValue ~= targetValue do
+            local difference = targetValue - displayedValue
+            local distance = math.abs(difference)
+
+            if difference > 0 then
+                displayedValue += 1
+            else
+                displayedValue -= 1
+            end
+
+            updateText(displayedValue)
+
+            -- Large gaps count very quickly; small gaps remain readable.
+            local delayPerNumber = math.clamp(0.08 / math.max(distance, 1), 0.002, 0.02)
+            task.wait(delayPerNumber)
+        end
+
+        playPop()
+
+        -- Money may have changed while the pop animation was playing.
+        if displayedValue == targetValue then
+            break
+        end
+    end
+
+    animationRunning = false
+
+    -- Protect against a value change in the tiny gap before the flag reset.
+    if displayedValue ~= targetValue then
+        task.defer(runCounter)
+    end
+end
+
+-- On join, immediately show the already-loaded DataStore value.
+-- We do NOT count from 0 to the saved amount.
+updateText(displayedValue)
+
 money:GetPropertyChangedSignal("Value"):Connect(function()
-    animateTo(money.Value)
+    targetValue = money.Value
+    runCounter()
 end)
