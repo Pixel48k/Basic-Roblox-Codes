@@ -1,4 +1,11 @@
--- Place this Script in ServerScriptService
+--[[
+    BASIC LEADERSTATS EXAMPLE
+    Place this Script in ServerScriptService.
+
+    Use this only when you are NOT using the DataStore example.
+    If you use 06-DataStore-Saving/PlayerData.server.lua, disable/delete this
+    script because the DataStore script already creates leaderstats > Money.
+]]
 
 local Players = game:GetService("Players")
 
