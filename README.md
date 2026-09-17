@@ -1,28 +1,57 @@
 # Basic Roblox Codes
 
-A reusable Roblox/Luau code library for learning and building games.
+A reusable Roblox/Luau learning repository for the systems built during the Roblox Game Development project.
 
-This repository contains the core systems we have used in our Roblox project so far, with clear Explorer placement notes and reusable examples.
+Every concept folder contains a `README.md` that explains every code/example file in that folder, where it belongs in Roblox Studio, required setup, dependencies, and common mistakes.
 
-## Contents
+## Current project architecture
 
-- `01-Leaderstats/` — basic player currency/leaderstats setup
-- `02-Coin-System/` — collectible coin logic, respawning, hover/rotation, and pickup sound
-- `03-Money-GUI/` — displaying money and animating number changes
-- `04-RemoteEvents/` — basic client/server communication examples
-- `05-CollectionService-Tags/` — using tags to manage groups of objects
-- `06-DataStore-Saving/` — saving/loading player money
-- `07-Coin-To-GUI-Animation/` — polished client-side pickup feedback
-- `08-Basic-Structures/` — Roblox Explorer hierarchy reference
+The current money/ATM stack is:
+
+```text
+ServerScriptService
+├── PlayerData
+├── InteractionSystem
+└── Modules
+    ├── RewardService
+    └── InteractionHandlers
+        └── ATMHandler
+
+ReplicatedStorage
+└── MoneyCollected
+
+StarterGui
+└── MoneyNotification (LocalScript)
+```
+
+ATMs use the `Interactable` tag plus Attributes such as `InteractionType`, `RewardAmount`, and `Cooldown`. The newer `11-Interaction-Framework` replaces the older standalone ATM system for the active project.
+
+## Folders
+
+- `01-Leaderstats/` — basic non-saving leaderstats example
+- `02-Coin-System/` — touch coin reward plus hover/rotation example
+- `03-Money-GUI/` — adaptive animated money display
+- `04-RemoteEvents/` — basic client/server RemoteEvent learning examples
+- `05-CollectionService-Tags/` — one script managing many tagged coins
+- `06-DataStore-Saving/` — persistent Money loading/saving
+- `07-Coin-To-GUI-Animation/` — client pickup particles moving toward the money UI
+- `08-Basic-Structures/` — Explorer hierarchy/reference notes
+- `09-ModuleScripts/` — reusable `RewardService` and test script
+- `10-Attributes/` — configurable values stored on Roblox Instances
+- `10-RemoteEvents/` — current floating money notification client
+- `11-ProximityPrompt-ATM/` — older standalone ATM lesson/reference
+- `11-Interaction-Framework/` — current reusable tagged interaction framework
 
 ## Naming convention
 
-- `*.server.lua` = normal `Script` running on the server
-- `*.client.lua` = `LocalScript` running on the client
-- `*.lua` = reusable Luau code/module/example
+- `*.server.lua` = normal server `Script`
+- `*.client.lua` = `LocalScript`
+- `*.lua` = usually a reusable `ModuleScript` or example
 
-## Important
+## Important project rules
 
-DataStores only work correctly in a published experience. In Roblox Studio, enable **Game Settings > Security > Enable Studio Access to API Services** before testing DataStore code.
+Do not run two systems that create `leaderstats.Money`. If `06-DataStore-Saving/PlayerData.server.lua` is active, do not also run the basic `01-Leaderstats` script.
 
-The examples are intentionally separated by concept so they are easy to learn from and reuse.
+Do not run both the older standalone ATM system and the newer `11-Interaction-Framework` for the same ATM, or rewards can be processed twice.
+
+For DataStores, publish the experience and enable **Studio Access to API Services** before testing.

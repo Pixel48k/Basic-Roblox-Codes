@@ -1,57 +1,29 @@
-# Attributes
+# 10 — Attributes
 
-Roblox Attributes let you attach custom data directly to Instances and edit it from the Properties window.
+Attributes are custom values stored directly on Roblox Instances and editable in the Properties window.
 
-## Lesson: configurable reward pad
+## `AttributeRewardPad.server.lua`
 
-Explorer setup:
+A learning example showing how one Script can read configuration from Attributes rather than hardcoding every value.
 
-```text
-Workspace
-└── RewardPad (Part)
-    └── RewardPadScript (Script)
-
-ServerScriptService
-└── Modules
-    └── RewardService (ModuleScript)
-```
-
-## Important: create the Attributes in Edit mode
-
-Do **not** rely on a normal Script to create Attributes and then stop Play mode. Changes made by game scripts while Play mode is running are runtime changes and disappear when the test ends.
-
-Instead, before pressing Play:
-
-1. Select `Workspace > RewardPad`.
-2. Open the **Properties** window.
-3. Find the **Attributes** section near the bottom.
-4. Click **Add Attribute** / the `+` button.
-5. Create a **Number** attribute named `RewardAmount` and set it to `100`.
-6. Create another **Number** attribute named `Cooldown` and set it to `2`.
-
-You should then see:
+Typical Attributes:
 
 ```text
-Attributes
-RewardAmount    100
-Cooldown        2
+RewardAmount = 100   (Number)
+Cooldown = 2         (Number)
 ```
 
-Paste `AttributeRewardPad.server.lua` into the Script inside `RewardPad`.
+Create them in **Edit mode** from the object's Properties > Attributes section, then place the Script according to the setup expected by the example.
 
-Examples:
-
-- Bronze pad: `RewardAmount = 25`
-- Gold pad: `RewardAmount = 500`
-- Rare pad: `RewardAmount = 5000`
-
-The same pattern can later be used for coins, properties, doors, NPCs, quests, upgrades, weapons, and interactable objects.
-
-## Core API
+The code reads values using:
 
 ```lua
-part:SetAttribute("RewardAmount", 100)
-local reward = part:GetAttribute("RewardAmount")
+object:GetAttribute("RewardAmount")
+object:GetAttribute("Cooldown")
 ```
 
-`SetAttribute` changes the attribute on the current running instance. To make an Attribute permanently visible in Studio, create it on the object while not in Play mode.
+### Why this matters
+
+The active ATM system uses the same idea. Different ATMs can have different `RewardAmount` and `Cooldown` values without editing their Lua code.
+
+Changes made by game scripts while Play mode is running are runtime changes and disappear when the test ends; create permanent Studio Attributes while not playing.

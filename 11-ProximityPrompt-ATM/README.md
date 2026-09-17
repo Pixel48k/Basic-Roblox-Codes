@@ -1,31 +1,24 @@
-# ProximityPrompt ATM
+# 11 — Standalone ProximityPrompt ATM (Older Lesson)
 
-This example gives Money only when a player activates a ProximityPrompt, such as by pressing E.
+This folder is kept as a learning/reference version of an ATM implemented without the newer central interaction framework.
 
-## Explorer setup
+## `ATM.server.lua`
+
+A standalone server Script for an ATM using a ProximityPrompt and reward/cooldown logic.
+
+Use it only when following this older lesson or building a completely independent ATM. For the current project, prefer `11-Interaction-Framework`.
+
+### Typical structure
 
 ```text
 Workspace
-└── ATMPart (Part)
+└── ATM
     ├── ProximityPrompt
-    └── ATM (Script)
-
-ServerScriptService
-└── Modules
-    └── RewardService (ModuleScript)
+    └── ATM Script
 ```
 
-Paste `ATM.server.lua` into the normal Script inside the same Part as the ProximityPrompt.
+The ATM requires `leaderstats.Money`/RewardService according to the code version used in the file.
 
-Do not use a `.Touched` money script on the ATM Part, otherwise touching it can still give Money.
+### Important
 
-## Optional Attributes on ATMPart
-
-Create these while not in Play mode:
-
-- `RewardAmount` (Number), for example `500`
-- `Cooldown` (Number), for example `5`
-
-If they do not exist, the script falls back to 500 Money and a 5 second cooldown.
-
-The cooldown is tracked per player, so one player using the ATM does not block another player from using it.
+Do **not** run this standalone ATM logic and the central `InteractionSystem + ATMHandler` on the same ATM. Two systems listening to the same interaction can cause duplicate rewards or confusing behavior.

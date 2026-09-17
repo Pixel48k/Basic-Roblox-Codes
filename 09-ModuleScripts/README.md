@@ -1,40 +1,34 @@
-# ModuleScripts — RewardService
+# 09 — ModuleScripts / RewardService
 
-ModuleScripts let multiple scripts share the same functions and logic. Instead of every coin, quest, job, or property script directly editing Money, they can call one reusable service.
+ModuleScripts let multiple systems reuse the same functions instead of duplicating logic.
 
-## Roblox Studio hierarchy
+## `RewardService.lua`
+
+Create a ModuleScript here:
 
 ```text
 ServerScriptService
-├── PlayerData
-├── Modules
-│   └── RewardService      (ModuleScript)
-└── RewardTest             (Script, temporary for testing)
+└── Modules
+    └── RewardService
 ```
 
-## Step 1 — Create the module
+`RewardService.AddMoney(player, amount)` validates the Player and amount, finds `leaderstats.Money`, adds the reward, and returns `true` on success or `false` on failure.
 
-Inside `ServerScriptService`, create a Folder named `Modules`. Inside it, create a `ModuleScript` named `RewardService` and paste the contents of `RewardService.lua`.
+This is the reward API used by the newer ATM interaction framework.
 
-## Step 2 — Test it
+## `RewardTest.server.lua`
 
-Create a normal Script named `RewardTest` in `ServerScriptService` and paste `RewardTest.server.lua`.
+Temporary learning/test Script. Put it in `ServerScriptService`; it requires RewardService and gives a small reward after the player joins so you can confirm the module works.
 
-When you press Play, wait about 3 seconds. The script should add 25 Money. Because it changes the same `leaderstats.Money` IntValue used by PlayerData, your GUI should update and the new amount will be saved by the existing DataStore system.
+Delete or disable the test Script after testing. Keep `Modules > RewardService`.
 
-## Step 3 — Remove the test script
-
-After confirming it works, delete or disable `RewardTest`. Keep `Modules > RewardService`; future systems will reuse it.
-
-## Reusing the module
-
-Any server Script can use:
+### Reuse example
 
 ```lua
 local ServerScriptService = game:GetService("ServerScriptService")
 local RewardService = require(ServerScriptService.Modules.RewardService)
 
-RewardService.AddMoney(player, 10)
+RewardService.AddMoney(player, 100)
 ```
 
-Never trust a client LocalScript to decide how much Money a player should receive. Award currency from server-side code.
+Currency rewards should be decided by server-side code, not trusted directly from a client.

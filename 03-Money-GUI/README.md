@@ -1,8 +1,10 @@
-# Money GUI Setup
+# 03 — Money GUI
 
-Use `MoneyGui.client.lua` for the custom money display.
+## `MoneyGui.client.lua`
 
-## Recommended hierarchy
+Controls the player's custom Money TextLabel and animates changes instead of instantly jumping between values.
+
+### Recommended Studio setup
 
 ```text
 StarterGui
@@ -11,11 +13,11 @@ StarterGui
     └── MoneyGuiController (LocalScript)
 ```
 
-The LocalScript may also be placed directly inside `MoneyLabel`; the script supports both layouts.
+Paste `MoneyGui.client.lua` into the LocalScript. It can also sit directly inside the money TextLabel.
 
-## Required player data
+### Required data
 
-The server must create:
+The player must have:
 
 ```text
 Player
@@ -23,10 +25,14 @@ Player
     └── Money (IntValue)
 ```
 
-The DataStore example in `06-DataStore-Saving/PlayerData.server.lua` already creates this value.
+`06-DataStore-Saving/PlayerData.server.lua` creates this automatically.
 
-## Important
+### What it does
 
-Do not run two different LocalScripts that both write to the same money TextLabel. Keep one money GUI controller only.
+It finds the Money label, immediately displays the loaded value, listens for Money changes, and animates toward the new value. Small changes count nearly one-by-one; large changes automatically use larger steps so the UI catches up quickly.
 
-The controller displays the loaded value immediately and then animates later Money changes one number at a time. It does not resize the label or add UIScale objects, so it will not alter the UI layout.
+Tune `MAX_VISIBLE_STEPS` and `STEP_DELAY` to adjust speed/smoothness.
+
+### Important
+
+Keep only one LocalScript writing to the same Money TextLabel.

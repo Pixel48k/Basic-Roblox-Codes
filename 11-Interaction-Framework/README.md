@@ -1,32 +1,61 @@
-# Central Interaction Framework
+# 11 — Central Interaction Framework
 
-This lesson replaces separate per-feature interaction scripts with one server-side interaction router plus reusable handler ModuleScripts.
+This is the **current recommended interaction architecture** for the project. It replaces separate scripts such as `ATMSystem`, `DoorSystem`, and `ChestSystem` with one router plus reusable handler ModuleScripts.
 
-## Studio structure
+## Files
+
+### `InteractionSystem.server.lua`
+
+Put it in:
 
 ```text
 ServerScriptService
-├── InteractionSystem              (Script)
-└── Modules
-    ├── RewardService              (existing ModuleScript)
-    └── InteractionHandlers        (Folder)
-        └── ATMHandler             (ModuleScript)
-
-ReplicatedStorage
-└── MoneyCollected                 (existing RemoteEvent)
+└── InteractionSystem (Script)
 ```
 
-Each ATM can be a BasePart or Model containing a ProximityPrompt. Put the `Interactable` tag and all ATM Attributes on the **same exact ATM object** that the framework should treat as the interactable.
+It loads handler modules, finds objects tagged `Interactable`, finds their ProximityPrompt, validates player distance, applies per-player/per-object cooldowns, reads `InteractionType`, and routes the interaction to the correct handler.
 
-Required ATM Attributes on that same tagged object:
+It supports the `Interactable` tag on either a BasePart or a Model containing a descendant ProximityPrompt.
 
-- `InteractionType` (String) = `ATM`
-- `RewardAmount` (Number) = desired reward
-- `Cooldown` (Number) = desired cooldown
+### `ATMHandler.lua`
 
-The `ProximityPrompt` may be inside a descendant BasePart of the tagged Model/Part.
+Create as:
 
-Example:
+```text
+ServerScriptService
+└── Modules
+    └── InteractionHandlers
+        └── ATMHandler (ModuleScript)
+```
+
+It defines `Type = "ATM"`, validates `RewardAmount`, calls `RewardService.AddMoney`, and fires `ReplicatedStorage.MoneyCollected` so the player's notification appears.
+
+## Required complete hierarchy
+
+```text
+ServerScriptService
+├── PlayerData
+├── InteractionSystem
+└── Modules
+    ├── RewardService
+    └── InteractionHandlers
+        └── ATMHandler
+
+ReplicatedStorage
+└── MoneyCollected
+```
+
+## ATM setup
+
+Put the `Interactable` tag and all these Attributes on the **same ATM object**:
+
+```text
+InteractionType = "ATM"   (String)
+RewardAmount = 100         (Number)
+Cooldown = 0               (Number)
+```
+
+The ProximityPrompt can be inside a child Part:
 
 ```text
 Workspace
@@ -35,45 +64,37 @@ Workspace
       InteractionType = ATM
       RewardAmount = 100
       Cooldown = 0
-    └── Body
+    └── Body (Part)
         └── ProximityPrompt
 ```
 
-Do not put the tag on the Model while putting `RewardAmount` on a child Part, or vice versa. The handler reads the Attributes from the exact object carrying the `Interactable` tag.
+Do not put the tag on the Model while putting the Attributes on a different child Part.
 
-Delete/disable the old `ServerScriptService/ATMSystem` before testing, otherwise the ATM may be processed twice.
+## ProximityPrompt checklist
 
-## Troubleshooting
-
-If Output shows:
+If the prompt itself does not appear, verify the ProximityPrompt is inside a physical BasePart/Attachment and check:
 
 ```text
-Infinite yield possible on 'ServerScriptService.Modules:WaitForChild("InteractionHandlers")'
+Enabled = true
+KeyboardKeyCode = E
+MaxActivationDistance = 10
+HoldDuration = 0
+RequiresLineOfSight = false   (recommended while testing)
 ```
 
-then the required `InteractionHandlers` Folder is missing or is in the wrong place. Stop Play mode, create a **Folder** named exactly `InteractionHandlers` inside `ServerScriptService > Modules`, then move the `ATMHandler` **ModuleScript** inside it.
+The interaction framework listens to `Triggered`; it does not hide or disable the visual prompt.
 
-The exact hierarchy must be:
+## Expected Output
 
-```text
-ServerScriptService
-└── Modules
-    ├── RewardService
-    └── InteractionHandlers
-        └── ATMHandler
-```
-
-After restarting Play mode, Output should include:
+When setup is correct, Play mode should show:
 
 ```text
 Loaded interaction handler: ATM
 Connected interactable: Workspace.ATM Type: ATM
 ```
 
-If `Loaded interaction handler: ATM` appears but no `Connected interactable` line appears, the ATM probably does not have the `Interactable` tag.
+If you see `Infinite yield possible on ServerScriptService.Modules:WaitForChild("InteractionHandlers")`, create the missing `InteractionHandlers` Folder and put `ATMHandler` inside it.
 
-If `Connected interactable` appears but using the prompt gives no reward, verify that the exact tagged object has `InteractionType = ATM`, `RewardAmount` as a Number greater than 0, and `Cooldown` as a Number.
+If the handler loads but no interactable connects, check the `Interactable` tag.
 
-## Why this architecture matters
-
-`InteractionSystem` handles discovery, distance validation, cooldowns, and routing. Feature-specific behavior lives in small handler modules. New interaction types such as doors, chests, terminals, or shops can later be added by creating another handler instead of rewriting the central system.
+Do not run the old standalone `ATMSystem` for the same ATM at the same time.
