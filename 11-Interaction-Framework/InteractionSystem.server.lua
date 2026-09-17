@@ -8,10 +8,17 @@ local handlersFolder = ServerScriptService
 
 local INTERACTABLE_TAG = "Interactable"
 local DISTANCE_TOLERANCE = 3
+local DEBUG = true
 
 local handlers = {}
 local connections = {}
 local cooldowns = {}
+
+local function debugPrint(...)
+	if DEBUG then
+		print("[InteractionSystem]", ...)
+	end
+end
 
 local function loadHandlers()
 	for _, moduleScript in ipairs(handlersFolder:GetChildren()) do
@@ -35,7 +42,7 @@ local function loadHandlers()
 		end
 
 		handlers[handler.Type] = handler
-		print("Loaded interaction handler:", handler.Type)
+		debugPrint("Loaded handler:", handler.Type)
 	end
 end
 
@@ -58,13 +65,13 @@ local function isPlayerCloseEnough(player, prompt)
 	local promptPart = getPromptPart(prompt)
 
 	if not root or not promptPart then
-		return false
+		return false, nil, nil
 	end
 
 	local distance = (root.Position - promptPart.Position).Magnitude
 	local allowedDistance = prompt.MaxActivationDistance + DISTANCE_TOLERANCE
 
-	return distance <= allowedDistance
+	return distance <= allowedDistance, distance, allowedDistance
 end
 
 local function getCooldown(object)
@@ -127,11 +134,30 @@ local function setupInteractable(object)
 	end
 
 	connections[object] = prompt.Triggered:Connect(function(player)
-		if not isPlayerCloseEnough(player, prompt) then
+		debugPrint(
+			"Prompt triggered:",
+			object:GetFullName(),
+			"by",
+			player.Name
+		)
+
+		local closeEnough, distance, allowedDistance =
+			isPlayerCloseEnough(player, prompt)
+
+		if not closeEnough then
+			warn(
+				"Interaction rejected by distance check:",
+				object:GetFullName(),
+				"distance =",
+				distance,
+				"allowed =",
+				allowedDistance
+			)
 			return
 		end
 
 		if isOnCooldown(player, object) then
+			debugPrint("Interaction blocked by cooldown:", object:GetFullName())
 			return
 		end
 
@@ -144,6 +170,7 @@ local function setupInteractable(object)
 			end
 
 			if not canInteract then
+				debugPrint("Handler rejected interaction:", object:GetFullName())
 				return
 			end
 		end
@@ -156,13 +183,15 @@ local function setupInteractable(object)
 		end
 
 		if success == false then
+			debugPrint("Handler returned false:", object:GetFullName())
 			return
 		end
 
 		startCooldown(player, object)
+		debugPrint("Interaction completed:", object:GetFullName())
 	end)
 
-	print("Connected interactable:", object:GetFullName(), "Type:", interactionType)
+	debugPrint("Connected interactable:", object:GetFullName(), "Type:", interactionType)
 end
 
 local function removeInteractable(object)
