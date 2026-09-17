@@ -49,6 +49,29 @@ ReplicatedStorage
 └── MoneyCollected (RemoteEvent; created automatically if missing)
 ```
 
+## Important: create the server hierarchy in Edit mode
+
+Create `Modules > InteractionHandlers > ATMHandler` **while Play mode is stopped**.
+
+If you create or move these objects while a test is running, especially while Explorer is showing `Client`, the change may only exist in that running test and may not exist on the server when the next test begins.
+
+If Output says:
+
+```text
+Infinite yield possible on 'ServerScriptService.Modules:WaitForChild("InteractionHandlers")'
+```
+
+then the running server does not have this hierarchy:
+
+```text
+ServerScriptService
+└── Modules
+    └── InteractionHandlers
+        └── ATMHandler
+```
+
+Stop the test with the red Stop button, recreate/verify the hierarchy in Edit mode, then start Play again.
+
 ## ATM setup
 
 Put the `Interactable` tag and all these Attributes on the **same ATM object**:
@@ -111,7 +134,7 @@ These messages are useful for finding exactly where a broken interaction stops.
 
 `Infinite yield possible on ServerScriptService.Modules:WaitForChild("InteractionHandlers")`
 
-Create the missing `InteractionHandlers` Folder and put `ATMHandler` inside it.
+Create the missing `InteractionHandlers` Folder and put `ATMHandler` inside it **in Edit mode, not during Play mode**.
 
 `No handler exists for InteractionType: ATM`
 
