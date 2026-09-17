@@ -16,13 +16,30 @@ ReplicatedStorage
 └── MoneyCollected                 (existing RemoteEvent)
 ```
 
-Each ATM can be a BasePart or Model containing a ProximityPrompt. Put the `Interactable` tag and the Attributes on the same ATM object that the framework should treat as the interactable.
+Each ATM can be a BasePart or Model containing a ProximityPrompt. Put the `Interactable` tag and all ATM Attributes on the **same exact ATM object** that the framework should treat as the interactable.
 
-Required ATM Attributes:
+Required ATM Attributes on that same tagged object:
 
 - `InteractionType` (String) = `ATM`
 - `RewardAmount` (Number) = desired reward
 - `Cooldown` (Number) = desired cooldown
+
+The `ProximityPrompt` may be inside a descendant BasePart of the tagged Model/Part.
+
+Example:
+
+```text
+Workspace
+└── ATM                     [Tag: Interactable]
+    Attributes:
+      InteractionType = ATM
+      RewardAmount = 100
+      Cooldown = 0
+    └── Body
+        └── ProximityPrompt
+```
+
+Do not put the tag on the Model while putting `RewardAmount` on a child Part, or vice versa. The handler reads the Attributes from the exact object carrying the `Interactable` tag.
 
 Delete/disable the old `ServerScriptService/ATMSystem` before testing, otherwise the ATM may be processed twice.
 
@@ -46,7 +63,16 @@ ServerScriptService
         └── ATMHandler
 ```
 
-After restarting Play mode, Output should include `Loaded interaction handler: ATM` and `Connected interactable: ... Type: ATM`.
+After restarting Play mode, Output should include:
+
+```text
+Loaded interaction handler: ATM
+Connected interactable: Workspace.ATM Type: ATM
+```
+
+If `Loaded interaction handler: ATM` appears but no `Connected interactable` line appears, the ATM probably does not have the `Interactable` tag.
+
+If `Connected interactable` appears but using the prompt gives no reward, verify that the exact tagged object has `InteractionType = ATM`, `RewardAmount` as a Number greater than 0, and `Cooldown` as a Number.
 
 ## Why this architecture matters
 
