@@ -16,14 +16,28 @@ ServerScriptService
     └── RewardService (ModuleScript)
 ```
 
+## Important: create the Attributes in Edit mode
+
+Do **not** rely on a normal Script to create Attributes and then stop Play mode. Changes made by game scripts while Play mode is running are runtime changes and disappear when the test ends.
+
+Instead, before pressing Play:
+
+1. Select `Workspace > RewardPad`.
+2. Open the **Properties** window.
+3. Find the **Attributes** section near the bottom.
+4. Click **Add Attribute** / the `+` button.
+5. Create a **Number** attribute named `RewardAmount` and set it to `100`.
+6. Create another **Number** attribute named `Cooldown` and set it to `2`.
+
+You should then see:
+
+```text
+Attributes
+RewardAmount    100
+Cooldown        2
+```
+
 Paste `AttributeRewardPad.server.lua` into the Script inside `RewardPad`.
-
-When you first run the game, the script creates two attributes on the Part if they do not already exist:
-
-- `RewardAmount` = `100`
-- `Cooldown` = `2`
-
-You can edit those values in Studio without changing the script.
 
 Examples:
 
@@ -40,4 +54,4 @@ part:SetAttribute("RewardAmount", 100)
 local reward = part:GetAttribute("RewardAmount")
 ```
 
-Attributes are useful when many copies of the same object should share one script but have different settings.
+`SetAttribute` changes the attribute on the current running instance. To make an Attribute permanently visible in Studio, create it on the object while not in Play mode.
